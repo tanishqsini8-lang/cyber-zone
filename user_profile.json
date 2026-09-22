@@ -15,7 +15,7 @@
     "mitre att&ck",
     "owasp"
   ],
-  "min_match_score": 2,
+  "min_match_score": 1,
   "preferred_markets": ["India", "United States", "United Kingdom"],
   "preferred_experience": ["Entry", "Mid"]
 }
