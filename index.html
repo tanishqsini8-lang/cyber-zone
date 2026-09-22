@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cyber Zone // Job Command Center</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          panel: '#0F172A',
+          neon:  '#10B981',
+          cyan:  '#06B6D4',
+        },
+        fontFamily: { mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'] }
+      }
+    }
+  }
+</script>
+<style>
+  body { background:#0F172A; color:#E2E8F0; font-family:'JetBrains Mono', monospace; }
+  /* CRT scanlines */
+  body::before {
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:50;
+    background: repeating-linear-gradient(
+      to bottom, rgba(16,185,129,0.04) 0px,
+      rgba(16,185,129,0.04) 1px, transparent 1px, transparent 3px);
+  }
+  .glow      { text-shadow: 0 0 8px #10B981, 0 0 16px rgba(16,185,129,.5); }
+  .glow-cyan { text-shadow: 0 0 8px #06B6D4, 0 0 16px rgba(6,182,212,.5); }
+  .card      { background:#111827; border:1px solid #1E293B; transition: all .2s; }
+  .card:hover{ border-color:#10B981; box-shadow:0 0 24px rgba(16,185,129,.25); transform: translateY(-2px); }
+  .chip      { cursor:pointer; border:1px solid #1E293B; padding:4px 10px; border-radius:6px;
+               font-size:12px; color:#94A3B8; transition: all .15s; }
+  .chip:hover       { border-color:#06B6D4; color:#06B6D4; }
+  .chip.active      { background:#10B981; color:#0F172A; border-color:#10B981; font-weight:700; }
+  .chip.cyan.active { background:#06B6D4; border-color:#06B6D4; }
+  input, select { background:#0B1220; border:1px solid #1E293B; color:#E2E8F0; }
+  input:focus, select:focus { outline:none; border-color:#10B981; box-shadow:0 0 0 2px rgba(16,185,129,.2); }
+  .status-btn      { font-size:11px; padding:2px 8px; border-radius:4px; border:1px solid #1E293B; }
+  .status-Saved    { background:#1E40AF; color:#DBEAFE; }
+  .status-Applied  { background:#065F46; color:#A7F3D0; }
+  .status-Interviewing { background:#92400E; color:#FDE68A; }
+  .status-Rejected { background:#7F1D1D; color:#FECACA; }
+  ::-webkit-scrollbar { width:8px; }
+  ::-webkit-scrollbar-track { background:#0F172A; }
+  ::-webkit-scrollbar-thumb { background:#1E293B; border-radius:4px; }
+  ::-webkit-scrollbar-thumb:hover { background:#10B981; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ============ HEADER ============ -->
+<header class="border-b border-slate-800 px-4 md:px-8 py-4 flex items-center gap-4 backdrop-blur-sm bg-panel/80 sticky top-0 z-40">
+  <!-- Terminal Square Logo -->
+  <svg width="52" height="52" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+    <rect x="2" y="2" width="60" height="60" rx="8" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+    <path d="M 2 12 L 2 2 L 12 2"   stroke="#06B6D4" stroke-width="3" fill="none"/>
+    <path d="M 62 12 L 62 2 L 52 2" stroke="#06B6D4" stroke-width="3" fill="none"/>
+    <path d="M 2 52 L 2 62 L 12 62" stroke="#06B6D4" stroke-width="3" fill="none"/>
+    <path d="M 62 52 L 62 62 L 52 62" stroke="#06B6D4" stroke-width="3" fill="none"/>
+    <text x="32" y="40" font-family="monospace" font-size="22" font-weight="bold"
+          fill="#10B981" text-anchor="middle">&gt;_</text>
+  </svg>
+
+  <div class="flex-1">
+    <h1 class="text-xl md:text-3xl font-bold glow tracking-widest">CYBER<span class="glow-cyan">ZONE</span></h1>
+    <p class="text-xs text-slate-500">// job &amp; internship aggregation terminal</p>
+  </div>
+
+  <button onclick="togglePrep()"
+    class="hidden md:block px-4 py-2 border border-cyan text-cyan text-sm rounded hover:bg-cyan hover:text-panel transition glow-cyan">
+    [ PREP_HUB ]
+  </button>
+</header>
+
+<!-- ============ FILTER BAR ============ -->
+<section class="px-4 md:px-8 py-5 border-b border-slate-800 space-y-4">
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+    <div class="md:col-span-2 relative">
+      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neon">&gt;</span>
+      <input id="search" type="text" placeholder="grep -i 'soc analyst'"
+             class="w-full pl-8 pr-3 py-2 rounded text-sm" oninput="render()"/>
+    </div>
+    <select id="market" class="px-3 py-2 rounded text-sm" onchange="render()">
+      <option value="ALL">ALL MARKETS</option>
+      <option value="India">INDIA</option>
+      <option value="United States">UNITED STATES</option>
+      <option value="United Kingdom">UNITED KINGDOM</option>
+      <option value="REMOTE">REMOTE ONLY</option>
+    </select>
+    <select id="expFilter" class="px-3 py-2 rounded text-sm" onchange="render()">
+      <option value="ALL">ALL LEVELS</option>
+      <option value="Entry">ENTRY</option>
+      <option value="Mid">MID</option>
+      <option value="Senior">SENIOR</option>
+    </select>
+  </div>
+
+  <!-- Job-type toggles -->
+  <div class="flex flex-wrap items-center gap-2">
+    <span class="text-xs text-slate-500 mr-2">TYPE:</span>
+    <span class="chip active" data-type="ALL"         onclick="setType(this)">ALL</span>
+    <span class="chip cyan" data-type="full-time"     onclick="setType(this)">FULL-TIME</span>
+    <span class="chip cyan" data-type="internship"    onclick="setType(this)">INTERNSHIPS / FRESHERS</span>
+  </div>
+
+  <!-- Experience chips -->
+  <div class="flex flex-wrap items-center gap-2">
+    <span class="text-xs text-slate-500 mr-2">EXP:</span>
+    <span class="chip active" data-exp="ALL"    onclick="setExp(this)">ALL</span>
+    <span class="chip"        data-exp="Entry"  onclick="setExp(this)">ENTRY</span>
+    <span class="chip"        data-exp="Mid"    onclick="setExp(this)">MID</span>
+    <span class="chip"        data-exp="Senior" onclick="setExp(this)">SENIOR</span>
+  </div>
+</section>
+
+<!-- ============ STATS ============ -->
+<section class="px-4 md:px-8 py-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+  <div class="card rounded p-3"><div class="text-xs text-slate-500">TOTAL_LISTINGS</div>
+    <div id="statTotal" class="text-2xl glow">0</div></div>
+  <div class="card rounded p-3"><div class="text-xs text-slate-500">INTERNSHIPS</div>
+    <div id="statIntern" class="text-2xl glow-cyan">0</div></div>
+  <div class="card rounded p-3"><div class="text-xs text-slate-500">ENTRY_LEVEL</div>
+    <div id="statEntry" class="text-2xl glow">0</div></div>
+  <div class="card rounded p-3"><div class="text-xs text-slate-500">APPLIED</div>
+    <div id="statApplied" class="text-2xl glow-cyan">0</div></div>
+</section>
+
+<!-- ============ JOB GRID ============ -->
+<main id="grid" class="px-4 md:px-8 pb-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></main>
+
+<!-- ============ PREP HUB MODAL ============ -->
+<div id="prepModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 overflow-y-auto">
+  <div class="max-w-4xl mx-auto my-8 card rounded-lg p-6 relative">
+    <button onclick="togglePrep()" class="absolute top-4 right-4 text-neon text-xl hover:text-cyan">[X]</button>
+    <h2 class="text-2xl glow mb-6">&gt;_ CYBER_CAREER_PREP_HUB</h2>
+
+    <div class="grid md:grid-cols-2 gap-6">
+      <div>
+        <h3 class="text-neon glow-cyan mb-2 text-sm">// CORE_INTERVIEW_QUESTIONS</h3>
+        <ul class="text-sm space-y-2 text-slate-300">
+          <li>▸ <b>CIA Triad:</b> Confidentiality, Integrity, Availability.</li>
+          <li>▸ <b>OSI Layers (7→1):</b> Physical, Data Link, Network, Transport, Session, Presentation, Application.</li>
+          <li>▸ <b>Common Ports:</b> 22 SSH · 23 Telnet · 25 SMTP · 53 DNS · 80 HTTP · 443 HTTPS · 445 SMB · 3389 RDP.</li>
+          <li>▸ <b>Incident Response Lifecycle:</b> Preparation → Identification → Containment → Eradication → Recovery → Lessons Learned.</li>
+          <li>▸ <b>Threat vs Vulnerability vs Risk</b></li>
+          <li>▸ <b>MITRE ATT&amp;CK Tactics</b> — Initial Access → Execution → Persistence → Privilege Escalation → ...</li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="text-neon glow-cyan mb-2 text-sm">// CERT_CHEATSHEETS</h3>
+        <div class="space-y-3 text-sm text-slate-300">
+          <div><b class="text-neon">Security+</b> — Threats, Vulns, Architecture, Ops, Governance. Entry gateway cert.</div>
+          <div><b class="text-neon">CEH</b> — Ethical hacking methodology, recon, scanning, exploitation basics.</div>
+          <div><b class="text-neon">eJPT</b> — Practical hands-on pentest (INE). Great first practical cert.</div>
+        </div>
+      </div>
+
+      <div class="md:col-span-2">
+        <h3 class="text-neon glow-cyan mb-2 text-sm">// HANDS_ON_LABS</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+          <a href="https://tryhackme.com" target="_blank" class="card rounded p-3 text-center hover:text-cyan">TryHackMe</a>
+          <a href="https://hackthebox.com" target="_blank" class="card rounded p-3 text-center hover:text-cyan">HackTheBox</a>
+          <a href="https://blueteamlabs.online" target="_blank" class="card rounded p-3 text-center hover:text-cyan">Blue Team Labs</a>
+          <a href="https://letsdefend.io" target="_blank" class="card rounded p-3 text-center hover:text-cyan">LetsDefend</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Floating prep hub button (mobile) -->
+<button onclick="togglePrep()"
+  class="md:hidden fixed bottom-6 right-6 z-40 bg-neon text-panel px-4 py-3 rounded-full font-bold glow">
+  &gt;_
+</button>
+
+<script>
+/* ================= STATE ================= */
+let JOBS = [];
+let STATUS = JSON.parse(localStorage.getItem('cz_status') || '{}');
+let activeType = 'ALL';
+let activeExp  = 'ALL';
+
+const $ = id => document.getElementById(id);
+
+/* ================= FETCH ================= */
+async function load() {
+  try {
+    const res = await fetch('data/jobs.json?ts=' + Date.now());
+    JOBS = await res.json();
+  } catch (e) {
+    JOBS = [];
+    console.error('Failed to load jobs.json', e);
+  }
+  render();
+}
+
+/* ================= FILTERS ================= */
+function setType(el) {
+  document.querySelectorAll('[data-type]').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  activeType = el.dataset.type;
+  render();
+}
+function setExp(el) {
+  document.querySelectorAll('[data-exp]').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  activeExp = el.dataset.exp;
+  $('expFilter').value = el.dataset.exp;
+  render();
+}
+$('expFilter').addEventListener('change', e => {
+  activeExp = e.target.value;
+  document.querySelectorAll('[data-exp]').forEach(c => {
+    c.classList.toggle('active', c.dataset.exp === activeExp);
+  });
+  render();
+});
+
+/* ================= RENDER ================= */
+function render() {
+  const q = $('search').value.toLowerCase().trim();
+  const market = $('market').value;
+  const exp = activeExp;
+
+  const filtered = JOBS.filter(j => {
+    if (q && !(`${j.title} ${j.company} ${j.description}`.toLowerCase().includes(q))) return false;
+    if (market === 'REMOTE' && !j.remote) return false;
+    if (market !== 'ALL' && market !== 'REMOTE' && j.market !== market) return false;
+    if (exp !== 'ALL' && j.experience !== exp) return false;
+    if (activeType !== 'ALL' && j.job_type !== activeType) return false;
+    return true;
+  });
+
+  /* stats */
+  $('statTotal').textContent   = JOBS.length;
+  $('statIntern').textContent  = JOBS.filter(j => j.job_type === 'internship').length;
+  $('statEntry').textContent   = JOBS.filter(j => j.experience === 'Entry').length;
+  $('statApplied').textContent = Object.values(STATUS).filter(s => s === 'Applied').length;
+
+  /* cards */
+  const grid = $('grid');
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="col-span-full text-center py-16 text-slate-500">
+      <div class="text-4xl mb-2">&gt;_</div>
+      No results. Try adjusting filters.
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(j => {
+    const st = STATUS[j.id] || '';
+    const score = j.match_score ?? 0;
+    const total = j.match_total ?? 0;
+    const badges = (j.matched_skills || []).map(s =>
+      `<span class="text-[10px] bg-neon/10 text-neon border border-neon/30 px-1.5 py-0.5 rounded">${s}</span>`
+    ).join(' ');
+
+    const statusBtns = ['Saved','Applied','Interviewing','Rejected'].map(s =>
+      `<button onclick="setStatus('${j.id}','${s}')"
+        class="status-btn status-${s} ${st===s?'ring-2 ring-neon':''}">${s}</button>`
+    ).join(' ');
+
+    return `
+      <article class="card rounded-lg p-4 flex flex-col">
+        <div class="flex justify-between items-start gap-2 mb-2">
+          <h3 class="font-bold text-neon leading-tight">${escapeHtml(j.title)}</h3>
+          <span class="text-[10px] whitespace-nowrap border border-cyan/40 text-cyan px-2 py-0.5 rounded">
+            ${j.job_type === 'internship' ? 'INTERN' : 'FULL-TIME'}
+          </span>
+        </div>
+        <div class="text-xs text-slate-400 mb-2">
+          ${escapeHtml(j.company)} · ${escapeHtml(j.location)} · ${j.market}
+        </div>
+        <div class="flex flex-wrap gap-1 mb-2 text-[10px]">
+          <span class="border border-slate-700 px-1.5 py-0.5 rounded text-slate-400">${j.experience}</span>
+          ${j.remote ? '<span class="border border-cyan/40 text-cyan px-1.5 py-0.5 rounded">REMOTE</span>' : ''}
+          <span class="border border-neon/40 text-neon px-1.5 py-0.5 rounded">⚡ ${score}/${total}</span>
+        </div>
+        <div class="flex flex-wrap gap-1 mb-3">${badges}</div>
+        <p class="text-xs text-slate-500 line-clamp-3 mb-3 flex-1">${escapeHtml((j.description||'').slice(0,180))}...</p>
+        <div class="text-xs text-slate-400 mb-3">💰 ${escapeHtml(j.salary)}</div>
+        <div class="flex flex-wrap gap-1 mb-3">${statusBtns}</div>
+        <a href="${j.url}" target="_blank" rel="noopener"
+           class="text-center text-xs border border-neon text-neon py-1.5 rounded hover:bg-neon hover:text-panel transition">
+          APPLY →
+        </a>
+      </article>`;
+  }).join('');
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+/* ================= STATUS TRACKER ================= */
+function setStatus(id, status) {
+  STATUS[id] = STATUS[id] === status ? null : status;
+  if (!STATUS[id]) delete STATUS[id];
+  localStorage.setItem('cz_status', JSON.stringify(STATUS));
+  render();
+}
+
+/* ================= PREP HUB ================= */
+function togglePrep() {
+  $('prepModal').classList.toggle('hidden');
+}
+
+/* ================= INIT ================= */
+load();
+setInterval(load, 6 * 60 * 60 * 1000); // refresh every 6h in-page
+</script>
+</body>
+</html>
